@@ -22,6 +22,7 @@ export class Player extends GameElement {
     public y: number = 0;
 
     public healthPercent: number = 1;
+    public changeHealth: number = 0; // This number will be added to the health percent by a player function that will allow the invincibility frames to work with other objects (most notably the heart attack)
 
     // Movement
     private xHeldAmount: number = 0; // If a direction is held for long enough, sprint through it
@@ -29,9 +30,13 @@ export class Player extends GameElement {
     private lastDirection: [number, number] = [0,0]; // Store last direction for above variable
     
     // Health
-    private invincibilityTime: number = 0;
-    private invincibilityFrameAnimation: number = 0; // Turn boolean on and off to keep track of the flashing 
-    private static totalInvincibilityTime = 1500;
+    private invincibilityTime: number = 0; // NOTE: The invincibility frames will end a little before the actual invincibility time ends just to give the player extra leeway 
+    private invincibilityFrameAnimationOpacity: number = .2; // Fade the opacity 
+    private invincibilityFrameAnimationTime: number = 0; // Keep track of fading the opacity at a constant rate 
+    private invincibilityFrameAnimationSpeed: number = 5; // About how much time should pass before changing opacity 
+    private invincibilityFrameAnimationDirection: boolean = false; // False = increasing, true = decreasing opacity 
+    private static totalInvincibilityTime = 3000;
+
 
     constructor(canvas: HTMLCanvasElement, playerArea: PlayerArea) {
         super(canvas)
@@ -118,12 +123,19 @@ export class Player extends GameElement {
 
     calculateDamage(t: number): boolean {
         // If invincibility frames, don't take damage
-        if (t - this.invincibilityTime < Player.totalInvincibilityTime) { return true }
+        if (t - this.invincibilityTime < Player.totalInvincibilityTime) { 
+            // The player will not take damage
+            // Stop the animation a little earlier so the player will have time to react to invincibility ending
+            if (t - this.invincibilityTime > Player.totalInvincibilityTime * .6) {
+                return false // Don't do animation
+            }
+            return true // Do animation
+        }
         const spotDamageAmount = this.playerArea.spots[this.x][this.y].damage
         // If damage > 0, do invincibility frames
-        if (spotDamageAmount > 0) { this.invincibilityTime = t }
+        if (spotDamageAmount > 0 || this.changeHealth > 0) { this.invincibilityTime = t }
 
-        this.healthPercent -= spotDamageAmount
+        this.healthPercent -= spotDamageAmount + this.changeHealth
         if (this.healthPercent < 0) { this.healthPercent = 0 } // Make sure health percent doesn't go past 0
         if (this.healthPercent > 1) { this.healthPercent = 1 } // Make sure health percent doesn't go past 1
         
@@ -166,12 +178,21 @@ export class Player extends GameElement {
         )
 
         // Invincibility frames
-        if (!doInvincibilityFrames && false) { return }
+        if (!doInvincibilityFrames) { return }
         // Swap the on and off of the invincibiity frame animation
-        if (t - this.invincibilityFrameAnimation) { return }
-        this.invincibilityFrameAnimation = t
+        if (t - this.invincibilityFrameAnimationTime >= this.invincibilityFrameAnimationSpeed) {
+            // Change opacity if enough time has passed to make smooth fade effect
+            let sign = -1
+            if (!this.invincibilityFrameAnimationDirection) { sign = 1 }
+            this.invincibilityFrameAnimationOpacity += .03 * sign
 
-        this.ctx.fillStyle = "white"
+            // Swap the direction of the animation when 1 or 0 is reached
+            if (this.invincibilityFrameAnimationOpacity >= .7 || this.invincibilityFrameAnimationOpacity <= .2) { this.invincibilityFrameAnimationDirection = !this.invincibilityFrameAnimationDirection }
+            this.invincibilityFrameAnimationTime = t
+        }
+
+
+        this.ctx.fillStyle = "rgb(255,255,255," + this.invincibilityFrameAnimationOpacity + ")"
         this.ctx.fillRect(
             this.playerArea.playerSpotsXOffset + this.playerArea.playerSpotWidth * this.x,
             this.playerArea.playerSpotsYOffset + this.playerArea.playerSpotHeight * this.y,

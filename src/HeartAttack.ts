@@ -95,7 +95,12 @@ export class HeartAttack extends GameElement {
         const y = this.startY - yDifference*percentCompleted
         
         if (percentCompleted === 1 && playerObject.x === this.spot.column && playerObject.y === this.spot.row) {
-            playerObject.healthPercent -= this.damage
+            // If the heart heals the player, then directly change the players health so the negative damage won't be affected by invincibility frames 
+            if (this.damage < 0) { 
+                playerObject.healthPercent -= this.damage 
+            } else {
+                playerObject.changeHealth -= this.damage
+            }
             this.collected = true
         }
 
