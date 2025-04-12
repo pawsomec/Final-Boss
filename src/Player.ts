@@ -136,6 +136,8 @@ export class Player extends GameElement {
         if (spotDamageAmount > 0 || this.changeHealth > 0) { this.invincibilityTime = t }
 
         this.healthPercent -= spotDamageAmount + this.changeHealth
+        this.changeHealth = 0 // Reset change health
+        
         if (this.healthPercent < 0) { this.healthPercent = 0 } // Make sure health percent doesn't go past 0
         if (this.healthPercent > 1) { this.healthPercent = 1 } // Make sure health percent doesn't go past 1
         
